@@ -6,24 +6,34 @@
 
 ### Overwegingen
 1 met het oog op pieklasten vangen we betalingsnotificaties op in een redis queue achter het externe eindpunt. Een apart proces eet deze queue leeg om het verwerkingsproces mee uit te voeren.
+
 2 een notificatie bevat tenminste een dossier-id en een bedrag. Het bedrag is positief, en in centen. Het dossier bevat een claim, geregistreerd als negatief bedrag, in centen. Zie ook 6.
+
 3 Het verwerkingsproces zoekt het dossier, te vinden via het id. Het dossier-model kan een betaling accepteren, en zichzelf sluiten als reactie op AFBETAALD.
+
 4 het dossier stuurt een event DEELBETAALD wanneer de verwerkte betaling een negatief saldo achterlaat, of een event AFBETAALD wanneer het saldo nul (of hoger, zie 9) is geworden.
   Het event bevat het bedrag en het nieuwe saldo als payload.
+
 5 ongeldige notificaties gaan naar een failed-log. Dit laat ik buiten de eerste iteratie.
+
 6 om dubbele verwerking te voorkomen, heb ik iets nodig dat de notificatie uniek identificeert, in ieder geval binnen een dossier.
   Is de betaaltijd gegeven, en vinden we die resolutie nauwkeurig genoeg (doet iemand ooit twee deelbetalingen met gelijk bedrag in dezelfde seconde?), dan kunnen we die gebruiken.
+
 7 Bij het dossier hoort een tabel van geaccepteerde betalingen, met unieke index.
   Wordt de nieuwe betaling met succes ingelegd, dan geldt de notificatie als 'verwerkt'. Binnen de transactie voor het inleggen wordt het saldo in de dossier-tabel gewijzigd.
     NB: voor SQL Server kunnen we de rij locken, in SQLite werkt dat anders; moet ik uitzoeken.
   Kan de betaling niet worden ingelegd, vanwege niet-uniek, dan wordt de notificatie geweigerd als 'dubbel'. Dit wordt gelogd.
+
 8 de locking-strategie (het invoegen van een geaccepteerde betaling lockt de tabel) veroorzaakt een bottleneck, waardoor het verwerkingsproces langzamer kan lopen dan er notificaties binnenkomen;
   de aanvoer-queue zou dit kunnen signaleren, en slim partitioneren van de database kan de bottleneck verkleinen.
   Performance-monitoring moet uitwijzen of deze ingrepen nodig zijn. SQL Server staat hier beslist boven SQLite.
   Loopt het toch uit de hand, dan is wellicht een volledige event/UoW-aanpak met een read-model voor Dossier aan de orde.
+
 9 is een betaling groter dan het dossier-saldo, dan moet het restant worden terugbetaald. Dit laat ik buiten de eerste iteratie.
+
 10 voor bevestigingen naar schuldenaren draait een listener voor de events DEELBETAALD en AFBETAALD.
   Deze listener schrijft bevestigingen naar een of meer verzend-queues (email, sms), al naar blijkt uit de contact-afspraken in het dossier.
+
 11 een apart proces eet de verzend-queues leeg tussen 7:00 en 20:00 ma t/m za en zorgt voor concrete verzending.
 
 ### Implementatie: betaling verwerken
