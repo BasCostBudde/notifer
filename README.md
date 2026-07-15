@@ -38,6 +38,10 @@
 
 ### Implementatie: betaling verwerken
 
+Ik kies ervoor om de domein-logica direct in het model te implementeren. Voor een proof-of-concept vind ik een complete hexagonale architectuur te zwaar.
+
+Een duurzame en beter schalende oplossing maken we door het enkele model te splitsen in een Entity, een RepositoryInterface, en dan in de applicatielaag operaties zoals acceptPayment uit te werken met concrete adapters.
+
 #### Testcases
 
 Usual
@@ -61,7 +65,7 @@ Edge
   Dossier 1 heeft een claim van 100 euro. Er arriveren drie betalingsnotificaties ten bedrage van 33,33 euro. Het dossier blijft open (rondt niet af naar boven)
 - Dossier weigert dubbel aangeleverde betaling.
   Dossier 1 heeft een claim van 100 euro. Er arriveren twee betalingsnotificaties met gelijke betaaltijd ten bedrage van 50 euro. Het dossier blijft open.
-  Testen: het verwerkingsproces genereert 1 DEELBETAALD.
+  Testen: het verwerkingsproces genereert alleen event DEELBETAALD.
 
 # Opdracht (ter referentie)
 
